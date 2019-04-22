@@ -12,6 +12,15 @@ import data2015 from "../data/2015crime.csv";
 import data2016 from "../data/2016crime.csv";
 
 class Home extends Component {
+  constructor (props) {
+    super(props);
+
+    this.state = {
+      year: 2011
+    };
+
+    this.changeYear = this.changeYear.bind(this);
+  }
 
   componentDidMount() {
     this.setupMap();
@@ -19,28 +28,28 @@ class Home extends Component {
   }
 
   setupMap() {
-    const svgWidth = 1000;
-    const svgHeight = 1000;
+    const svgWidth = 500;
+    const svgHeight = 500;
 
     let svg = d3
       .select(ReactDOM.findDOMNode(this.refs.d3Content))
       .append("svg")
       .attr("width", `${svgWidth}px`)
       .attr("height", `${svgHeight}px`)
-      .attr("id", "svg");
+      .attr("id", "svg")
+      .style("margin", "10px auto")
+      .style("background-color", "lightgray");
 
     d3.json("oaklandBeats.json").then(data => {
       let centroid = d3.geoCentroid(data);
 
       let projection = d3
         .geoMercator()
-        .scale([ 210000 ])
+        .scale([110000])
         .translate([svgWidth / 2, svgHeight / 2])
         .center(centroid);
 
-      let path = d3
-        .geoPath()
-        .projection(projection);
+      let path = d3.geoPath().projection(projection);
 
       // Draw counties
       svg
@@ -49,30 +58,139 @@ class Home extends Component {
         .enter()
         .append("path")
         .attr("d", path)
-        .attr("fill", "lightblue")
+        .attr("id", d => d.properties.Name)
+        .attr("fill", "white")
         .attr("stroke", "black");
-        });
-    }
+    });
+
+    // Setup legend
+    // Gradient
+    let legend = svg
+      .append("defs")
+      .append("svg:linearGradient")
+      .attr("id", "gradient")
+      .attr("x1", "0%")
+      .attr("y1", "100%")
+      .attr("x2", "100%")
+      .attr("y2", "100%")
+      .attr("spreadMethod", "pad");
+
+    legend
+      .append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "#f2f0f7")
+      .attr("stop-opacity", 1);
+
+    legend
+      .append("stop")
+      .attr("offset", "20%")
+      .attr("stop-color", "#dadaeb")
+      .attr("stop-opacity", 1);
+
+    legend
+      .append("stop")
+      .attr("offset", "40%")
+      .attr("stop-color", "#bcbddc")
+      .attr("stop-opacity", 1);
+
+    legend
+      .append("stop")
+      .attr("offset", "60%")
+      .attr("stop-color", "#9e9ac8")
+      .attr("stop-opacity", 1);
+
+    legend
+      .append("stop")
+      .attr("offset", "80%")
+      .attr("stop-color", "#756bb1")
+      .attr("stop-opacity", 1);
+
+    legend
+      .append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "#54278f")
+      .attr("stop-opacity", 1);
+
+    const lWidth = 200;
+    const lHeight = 20;
+    // Legend Rect
+    svg
+      .append("rect")
+      .attr("width", lWidth)
+      .attr("height", lHeight)
+      .style("fill", "url(#gradient)")
+      .style("stroke", "black")
+      .attr("transform", `translate( ${svgWidth - lWidth - 30}, ${45})`);
+
+    // Legend title
+    svg
+      .append("text")
+      .attr("x", 25)
+      .attr("y", 37.5)
+      .attr("dominant-baseline", "middle")
+      .attr("fill", "black")
+      .attr("id", "titleText")
+      .style("font-size", "25px")
+      .style("font-weight", "bold")
+      .text("Year |");
+
+    // Legend top text
+    svg
+      .append("text")
+      .attr("x", svgWidth - lWidth - 25)
+      .attr("y", 37.5)
+      .attr("dominant-baseline", "middle")
+      .attr("fill", "black")
+      .attr("id", "topText")
+      .style("font-size", "13px")
+      .style("font-weight", "bold")
+      .text(`All Crime Reports`);
+
+    // Low text
+    svg
+      .append("text")
+      .attr("x", svgWidth - lWidth - 25)
+      .attr("y", 55)
+      .attr("dominant-baseline", "middle")
+      .attr("fill", "black")
+      .attr("id", "lowText")
+      .style("font-size", "11px")
+      .style("font-weight", "bold")
+      .text(`Loading..`);
+
+    // High text
+    svg
+      .append("text")
+      .attr("x", svgWidth - 35)
+      .attr("y", 55)
+      .attr("dominant-baseline", "middle")
+      .attr("text-anchor", "end")
+      .attr("fill", "black")
+      .attr("id", "highText")
+      .style("font-size", "11px")
+      .style("font-weight", "bold")
+      .text(`Loading..`);
+  }
 
   showYear(year) {
     let data;
-    switch(year) {
+    switch (year) {
       case 2011:
         data = data2011;
         break;
-        case 2012:
+      case 2012:
         data = data2012;
         break;
-        case 2013:
+      case 2013:
         data = data2013;
         break;
-        case 2014:
+      case 2014:
         data = data2014;
         break;
-        case 2015:
+      case 2015:
         data = data2015;
         break;
-        case 2016:
+      case 2016:
         data = data2016;
         break;
       default:
@@ -80,35 +198,142 @@ class Home extends Component {
         break;
     }
 
+    let crimeCount = {};
+
     d3.csv(data, d => {
+      if (crimeCount[d.Beat] !== undefined) crimeCount[d.Beat]++;
+      else crimeCount[d.Beat] = 1;
+
       return {
         agency: d.Agency,
-        createdTime: new Date(d['Create Time']),
-        closedTime: new Date(d['Closed Time']),
+        createdTime: new Date(d["Create Time"]),
+        closedTime: new Date(d["Closed Time"]),
         location: d.Location,
         beat: d.Beat,
         priority: parseInt(d.Priority),
-        incidentTypeId: d['Incident Type Id'],
-        incidentTypeDescription: d['Incident Type Description'],
-        eventNumber: d['Event Number']
+        incidentTypeId: d["Incident Type Id"],
+        incidentTypeDescription: d["Incident Type Description"],
+        eventNumber: d["Event Number"]
       };
     })
       .then(data => {
-        this.visualizeData(data);
+        this.visualizeData(data, year, crimeCount);
       })
       .catch(error => {
         console.dir(error);
       });
   }
 
-  visualizeData(dataset) {
+  visualizeData(dataset, year, crimeCount) {
+    let maxCrimes = d3.max(Object.values(crimeCount)) + 200;
+
+    /*
     console.dir(dataset);
+    console.dir(crimeCount);
+    console.dir(maxCrimes);
+    */
+    
+    let svg = d3.select("#svg");
+    let beats = svg.selectAll("path");
+
+    let colorScale = d3
+      .scaleLinear()
+      .domain([
+        0,
+        maxCrimes * 0.2,
+        maxCrimes * 0.4,
+        maxCrimes * 0.6,
+        maxCrimes * 0.8,
+        maxCrimes
+      ])
+      .range([
+        "#f2f0f7",
+        "#dadaeb",
+        "#bcbddc",
+        "#9e9ac8",
+        "#756bb1",
+        "#54278f"
+      ]);
+
+    beats
+      .transition()
+      .duration(500)
+      .style("fill", function() {
+        let currentBeat = d3.select(this);
+        let beatID = currentBeat.attr("id");
+
+        return colorScale(crimeCount[beatID] || 0);
+      });
+
+    d3.select("#titleText")
+      .transition()
+      .duration(500)
+      .text(`Year | ${year}`);
+
+    d3.select("#lowText")
+      .transition()
+      .duration(500)
+      .text("0");
+
+    d3.select("#highText")
+      .transition()
+      .duration(500)
+      .text(maxCrimes);
+  }
+
+  changeYear(event) {
+    this.setState({
+      year: event.target.value
+    });
+
+    let svg = d3.select("#svg");
+    let beats = svg.selectAll("path");
+
+    beats
+      .style("fill", 'white');
+
+    d3.select("#titleText")
+      .transition()
+      .duration(500)
+      .text(`Year | `);
+
+    d3.select("#lowText")
+      .transition()
+      .duration(500)
+      .text("Loading..");
+
+    d3.select("#highText")
+      .transition()
+      .duration(500)
+      .text('Loading..');
+      
+    this.showYear(parseInt(event.target.value));
   }
 
   render() {
+    let { year } = this.state;
+
     return (
       <div className={homeStyles.container}>
-        <div className={homeStyles.header}></div>
+        <div className={homeStyles.header} />
+        <h1 className={homeStyles.h1}>Visualizing Crime in Oakland CA</h1>
+        <p className={homeStyles.welcomeP}>
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi
+          bibendum, arcu eu finibus rutrum, massa mi tristique orci, a tempus
+          turpis nibh tincidunt eros. Sed lacinia tempus dignissim.
+        </p>
+        <div className={homeStyles.sliderContainer}>
+          <input
+            type="range"
+            min="2011"
+            max="2016"
+            value={year}
+            onChange={this.changeYear}
+            className={homeStyles.slider}
+            id="oaklandYear"
+          />
+          <div className={homeStyles.sliderValue}>{year}</div>
+        </div>
         <div className={homeStyles.d3Content} ref="d3Content" />
       </div>
     );

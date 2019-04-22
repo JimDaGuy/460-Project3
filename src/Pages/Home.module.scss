@@ -2,7 +2,7 @@
   background-color: white;
   margin: 0;
   padding: 0;
-  min-width: 1000px;
+  min-width: 600px;
 }
 
 .header {
@@ -14,4 +14,67 @@
   align-items: center;
   position: fixed;
   top: 0;
+}
+
+.h1 {
+  margin-top: 50px;
+  text-align: center;
+}
+
+.welcomeP {
+  margin: 0 auto;
+  max-width: 500px;
+}
+
+.sliderContainer {
+  max-width: 500px;
+  margin: 10px auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.slider {
+  max-width: 450px;
+  -webkit-appearance: none;
+  width: 70%;
+  height: 25px;
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
+
+.slider:hover {
+  opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  background: #54278f;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  background: #54278f;
+  cursor: pointer;
+}
+
+.sliderValue {
+  font-size: 1.2em;
+  margin-left: 5px;
+  background-color: #9e9ac8;
+  border-radius: 3px;
+}
+
+.d3Content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
