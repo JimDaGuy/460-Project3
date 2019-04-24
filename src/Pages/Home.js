@@ -12,7 +12,7 @@ import data2015 from "../data/2015crime.csv";
 import data2016 from "../data/2016crime.csv";
 
 class Home extends Component {
-  constructor (props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -37,8 +37,8 @@ class Home extends Component {
       .attr("width", `${svgWidth}px`)
       .attr("height", `${svgHeight}px`)
       .attr("id", "svg")
-      .style("margin", "10px auto")
-      .style("background-color", "lightgray");
+      .style("margin", "10px auto");
+    // .style("background-color", "lightgray");
 
     d3.json("oaklandBeats.json").then(data => {
       let centroid = d3.geoCentroid(data);
@@ -170,9 +170,50 @@ class Home extends Component {
       .style("font-size", "11px")
       .style("font-weight", "bold")
       .text(`Loading..`);
+
+    // Beat text
+    svg
+      .append("text")
+      .attr("x", svgWidth - 155)
+      .attr("y", 105)
+      .attr("dominant-baseline", "middle")
+      .attr("fill", "black")
+      .attr("id", "beatText")
+      .style("font-size", "13px")
+      .style("font-weight", "bold")
+      .text(`Beat: `);
+
+    // Beat Reports text
+    svg
+      .append("text")
+      .attr("x", svgWidth - 155)
+      .attr("y", 125)
+      .attr("dominant-baseline", "middle")
+      .attr("fill", "black")
+      .attr("id", "reportText")
+      .style("font-size", "13px")
+      .style("font-weight", "bold")
+      .text(`Reports:`);
   }
 
   showYear(year) {
+    // Remove existing spinners
+    d3.select("#loadingSVG").remove();
+
+    let svg = d3.select("#svg");
+    // Add loading spinner
+    svg
+      .append("rect")
+      .attr("id", "loadingSVG")
+      .attr("fill", "gray")
+      .classed(homeStyles.loadingSVG, true);
+
+    d3.select("#beatText")
+      .text(`Beat: `);
+
+    d3.select("#reportText")
+      .text(`Reports: `);
+
     let data;
     switch (year) {
       case 2011:
@@ -198,11 +239,13 @@ class Home extends Component {
         break;
     }
 
-    let crimeCount = {};
+    let crimeData = {};
+    crimeData.year = year;
+    crimeData.totalReports = {};
 
     d3.csv(data, d => {
-      if (crimeCount[d.Beat] !== undefined) crimeCount[d.Beat]++;
-      else crimeCount[d.Beat] = 1;
+      if (crimeData.totalReports[d.Beat] !== undefined) crimeData.totalReports[d.Beat]++;
+      else crimeData.totalReports[d.Beat] = 1;
 
       return {
         agency: d.Agency,
@@ -217,22 +260,24 @@ class Home extends Component {
       };
     })
       .then(data => {
-        this.visualizeData(data, year, crimeCount);
+        this.visualizeData(crimeData);
       })
       .catch(error => {
         console.dir(error);
       });
   }
 
-  visualizeData(dataset, year, crimeCount) {
-    let maxCrimes = d3.max(Object.values(crimeCount)) + 200;
+  visualizeData(crimeData) {
+    // Round up to nearest 200
+    let maxCrimes =
+      (Math.floor(d3.max(Object.values(crimeData.totalReports)) / 200) + 1) * 200;
 
     /*
     console.dir(dataset);
-    console.dir(crimeCount);
+    console.dir(totalReports);
     console.dir(maxCrimes);
     */
-    
+
     let svg = d3.select("#svg");
     let beats = svg.selectAll("path");
 
@@ -255,20 +300,39 @@ class Home extends Component {
         "#54278f"
       ]);
 
+    // Remove existing spinners
+    d3.select("#loadingSVG").remove();
+
     beats
+      .on("mouseover", function(d, i) {
+        let currentBeat = d3.select(this);
+        let beatID = currentBeat.attr("id");
+
+        d3.select("#beatText")
+          .transition()
+          .duration(500)
+          .text(`Beat: ${beatID}`);
+
+        let reportCount = crimeData.totalReports[beatID] || "N/A";
+
+        d3.select("#reportText")
+          .transition()
+          .duration(500)
+          .text(`Reports: ${reportCount}`);
+      })
       .transition()
       .duration(500)
       .style("fill", function() {
         let currentBeat = d3.select(this);
         let beatID = currentBeat.attr("id");
 
-        return colorScale(crimeCount[beatID] || 0);
+        return colorScale(crimeData.totalReports[beatID] || 0);
       });
 
     d3.select("#titleText")
       .transition()
       .duration(500)
-      .text(`Year | ${year}`);
+      .text(`Year | ${crimeData.year}`);
 
     d3.select("#lowText")
       .transition()
@@ -289,8 +353,7 @@ class Home extends Component {
     let svg = d3.select("#svg");
     let beats = svg.selectAll("path");
 
-    beats
-      .style("fill", 'white');
+    beats.style("fill", "white");
 
     d3.select("#titleText")
       .transition()
@@ -305,8 +368,8 @@ class Home extends Component {
     d3.select("#highText")
       .transition()
       .duration(500)
-      .text('Loading..');
-      
+      .text("Loading..");
+
     this.showYear(parseInt(event.target.value));
   }
 
