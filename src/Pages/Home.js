@@ -208,11 +208,9 @@ class Home extends Component {
       .attr("fill", "gray")
       .classed(homeStyles.loadingSVG, true);
 
-    d3.select("#beatText")
-      .text(`Beat: `);
+    d3.select("#beatText").text(`Beat: `);
 
-    d3.select("#reportText")
-      .text(`Reports: `);
+    d3.select("#reportText").text(`Reports: `);
 
     let data;
     switch (year) {
@@ -241,11 +239,41 @@ class Home extends Component {
 
     let crimeData = {};
     crimeData.year = year;
-    crimeData.totalReports = {};
+    crimeData.totalReports = 0;
+    crimeData.maxBeatReports = 0;
+    crimeData.beatReportCount = {};
 
     d3.csv(data, d => {
-      if (crimeData.totalReports[d.Beat] !== undefined) crimeData.totalReports[d.Beat]++;
-      else crimeData.totalReports[d.Beat] = 1;
+      if (crimeData.beatReportCount[d.Beat] !== undefined) {
+        // Increment count of all reports for the beat
+        crimeData.beatReportCount[d.Beat].total++;
+        //Check for max beat reports
+        if (crimeData.beatReportCount[d.Beat].total > crimeData.maxBeatReports)
+          crimeData.maxBeatReports = crimeData.beatReportCount[d.Beat].total;
+        // Increment count of incident types for the beat
+        let beatData = crimeData.beatReportCount[d.Beat];
+        let incidentTypeId = d["Incident Type Id"];
+
+        // Check if types object is defined
+        if (beatData.types !== undefined) {
+          // Check if incident type id key has been set
+          if (beatData.types[incidentTypeId] !== undefined)
+            beatData.types[incidentTypeId]++;
+          else {
+            beatData.types[incidentTypeId] = 1;
+          }
+        } else {
+          beatData.types = {};
+          beatData.types[incidentTypeId] = 1;
+        }
+      } else {
+        crimeData.beatReportCount[d.Beat] = {};
+        crimeData.beatReportCount[d.Beat].types = {};
+        crimeData.beatReportCount[d.Beat].types[d["Incident Type Id"]] = 1;
+        crimeData.beatReportCount[d.Beat].total = 1;
+      }
+
+      crimeData.totalReports++;
 
       return {
         agency: d.Agency,
@@ -260,6 +288,21 @@ class Home extends Component {
       };
     })
       .then(data => {
+        // Add list of beats with most crime
+        let beatReportCount = crimeData.beatReportCount;
+        let topReportedBeats = Object.keys(beatReportCount).sort(
+          (a, b) => beatReportCount[b].total - beatReportCount[a].total
+        ).slice(0, 10);
+        let beatsWithCounts = {};
+        beatsWithCounts.list = topReportedBeats;
+        for (let i = 0; i < topReportedBeats.length; i++) {
+          let beatName = topReportedBeats[i];
+          beatsWithCounts[beatName] = beatReportCount[beatName];
+        }
+        crimeData.topReportedBeats = beatsWithCounts;
+
+        // 
+
         this.visualizeData(crimeData);
       })
       .catch(error => {
@@ -268,15 +311,10 @@ class Home extends Component {
   }
 
   visualizeData(crimeData) {
-    // Round up to nearest 200
-    let maxCrimes =
-      (Math.floor(d3.max(Object.values(crimeData.totalReports)) / 200) + 1) * 200;
+    console.dir(crimeData);
 
-    /*
-    console.dir(dataset);
-    console.dir(totalReports);
-    console.dir(maxCrimes);
-    */
+    // Round up to nearest 200
+    let maxCrimes = (Math.floor(crimeData.maxBeatReports / 200) + 1) * 200;
 
     let svg = d3.select("#svg");
     let beats = svg.selectAll("path");
@@ -308,17 +346,20 @@ class Home extends Component {
         let currentBeat = d3.select(this);
         let beatID = currentBeat.attr("id");
 
-        d3.select("#beatText")
-          .transition()
-          .duration(500)
-          .text(`Beat: ${beatID}`);
+        currentBeat.attr("stroke-width", "3");
 
-        let reportCount = crimeData.totalReports[beatID] || "N/A";
+        d3.select("#beatText").text(`Beat: ${beatID}`);
 
-        d3.select("#reportText")
-          .transition()
-          .duration(500)
-          .text(`Reports: ${reportCount}`);
+        if (crimeData.beatReportCount[beatID] !== undefined) {
+          let reportCount = crimeData.beatReportCount[beatID].total || "N/A";
+
+          d3.select("#reportText").text(`Reports: ${reportCount}`);
+        }
+      })
+      .on("mouseout", function(d, i) {
+        let currentBeat = d3.select(this);
+
+        currentBeat.attr("stroke-width", "1");
       })
       .transition()
       .duration(500)
@@ -326,7 +367,8 @@ class Home extends Component {
         let currentBeat = d3.select(this);
         let beatID = currentBeat.attr("id");
 
-        return colorScale(crimeData.totalReports[beatID] || 0);
+        if (crimeData.beatReportCount[beatID] !== undefined)
+          return colorScale(crimeData.beatReportCount[beatID].total || 0);
       });
 
     d3.select("#titleText")
