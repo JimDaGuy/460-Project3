@@ -18,11 +18,14 @@ class Home extends Component {
     this.state = {
       year: 2011,
       svg2YAxis: null,
-      svg2YAxisGroup: null
+      svg2YAxisGroup: null,
+      svg3YAxis: null,
+      svg3YAxisGroup: null
     };
 
     this.changeYear = this.changeYear.bind(this);
     this.setupMap = this.setupMap.bind(this);
+    this.showBeat = this.showBeat.bind(this);
     this.visualizeData = this.visualizeData.bind(this);
   }
 
@@ -361,19 +364,6 @@ class Home extends Component {
       crimeData.totalReports++;
 
       return;
-      /*
-      return {
-        agency: d.Agency,
-        createdTime: new Date(d["Create Time"]),
-        closedTime: new Date(d["Closed Time"]),
-        location: d.Location,
-        beat: d.Beat,
-        priority: parseInt(d.Priority),
-        incidentTypeId: d["Incident Type Id"],
-        incidentTypeDescription: d["Incident Type Description"],
-        eventNumber: d["Event Number"]
-      };
-      */
     })
       .then(data => {
         // Add list of beats with most crime
@@ -405,6 +395,204 @@ class Home extends Component {
       .catch(error => {
         console.dir(error);
       });
+  }
+
+  showBeat(crimeData, beat) {
+    let svgWidth = 400;
+    let svgHeight = 400;
+    let svg3Indent = 55;
+
+    let d3Content3 = d3.select(ReactDOM.findDOMNode(this.refs.d3Content3));
+
+    let currentFill = d3Content3.html();
+
+    let beatReports = crimeData.beatReportCount;
+    let typeDescriptions = beatReports[beat].typeDescriptions;
+    let topTypeDescriptions = beatReports[beat].topTypeDescriptions;
+
+    // If the third content section is empty
+    if (currentFill === "") {
+      let svg3 = d3Content3
+        .append("svg")
+        .attr("id", "svg3")
+        .attr("width", `${svgWidth}px`)
+        .attr("height", `${svgHeight}px`)
+        .style("margin", "10px auto");
+
+      svg3
+        .append("text")
+        .attr("id", "svg2-title")
+        .attr("x", svgWidth / 2)
+        .attr("y", svg3Indent / 2)
+        .attr("text-anchor", "middle")
+        .style("font-weight", "bold")
+        .text(`Top Report Types`);
+
+      svg3
+        .append("text")
+        .attr("id", "svg2-y-axis-label")
+        .attr("transform", "rotate(-90)")
+        .attr("text-anchor", "middle")
+        .attr("x", -svgHeight / 2)
+        .attr("y", svg3Indent / 2)
+        .text("Report Type Counts");
+
+      let topReportsXScale = d3
+        .scaleBand()
+        .domain(d3.range(topTypeDescriptions.length))
+        .range([svg3Indent, svgWidth - svg3Indent])
+        .paddingInner(0.1);
+
+      let topReportsYScale = d3
+        .scaleLinear()
+        .domain([0, typeDescriptions[topTypeDescriptions[0]]])
+        .range([svgHeight - svg3Indent, svg3Indent]);
+
+      let yAxis = d3.axisLeft(topReportsYScale).tickFormat(d => d);
+
+      let yAxisGroup = svg3
+        .append("g")
+        .classed("svg3Y axis", true)
+        .attr("transform", `translate(${svg3Indent}, 0)`)
+        .call(yAxis);
+
+      this.setState({
+        svg3YAxis: yAxis,
+        svg3YAxisGroup: yAxisGroup
+      });
+
+      svg3
+        .selectAll("rect")
+        .data(topTypeDescriptions, d => d)
+        .enter()
+        .append("rect")
+        .attr("x", (d, i) => topReportsXScale(i))
+        .attr("y", d => topReportsYScale(typeDescriptions[d]))
+        .attr(
+          "height",
+          d => svgHeight - svg3Indent - topReportsYScale(typeDescriptions[d])
+        )
+        .attr("width", topReportsXScale.bandwidth())
+        .classed("bar", true);
+
+      let barText = svg3
+        .selectAll(".barText")
+        .data(topTypeDescriptions, d => d);
+
+      barText
+        .enter()
+        .append("text")
+        .classed("barText", true)
+        .attr("text-anchor", "start")
+        .attr("alignment-baseline", "hanging")
+        .attr("transform", (d, i) => `translate(${topReportsXScale(i)}, ${svgHeight - svg3Indent})rotate(-90)`)
+        .attr("fill", "black")
+        .text(d => d)
+        .merge(barText)
+        .transition()
+        .duration(500)
+        .attr("text-anchor", "start")
+        .attr("alignment-baseline", "hanging")
+        .attr("transform", (d, i) => `translate(${topReportsXScale(i)}, ${svgHeight - svg3Indent})rotate(-90)`)
+        .attr("fill", "black")
+        .text(d => d);
+
+      barText
+        .exit()
+        .transition()
+        .duration(250)
+        .style("opacity", 0)
+        .remove();
+    } else {
+      // Update existing bar chart
+      let svg3 = d3.select("#svg3");
+      let bars = svg3.selectAll("rect").data(topTypeDescriptions, d => d);
+      let yAxis = this.state.svg3YAxis;
+      let yAxisGroup = this.state.svg3YAxisGroup;
+
+      let topReportsXScale = d3
+        .scaleBand()
+        .domain(d3.range(topTypeDescriptions.length))
+        .range([svg3Indent, svgWidth - svg3Indent])
+        .paddingInner(0.1);
+
+      let topReportsYScale = d3
+        .scaleLinear()
+        .domain([0, typeDescriptions[topTypeDescriptions[0]]])
+        .range([svgHeight - svg3Indent, svg3Indent]);
+
+      yAxis.scale(topReportsYScale);
+      yAxisGroup
+        .transition()
+        .duration(500)
+        .call(yAxis);
+
+      d3.select("#svg2-title")
+        .transition()
+        .duration(500)
+        .text(`Top Reported Beats - ${crimeData.year}`);
+
+      bars
+        .enter()
+        .append("rect")
+        .classed("bar", true)
+        .attr("x", svgWidth)
+        .attr("y", d => topReportsYScale(typeDescriptions[d]))
+        .attr(
+          "height",
+          d => svgHeight - svg3Indent - topReportsYScale(typeDescriptions[d])
+        )
+        .merge(bars)
+        .transition()
+        .duration(500)
+        .attr("x", (d, i) => topReportsXScale(i))
+        .attr("y", d => topReportsYScale(typeDescriptions[d]))
+        .attr(
+          "height",
+          d => svgHeight - svg3Indent - topReportsYScale(typeDescriptions[d])
+        )
+        .attr("width", topReportsXScale.bandwidth());
+
+      let barText = svg3
+        .selectAll(".barText")
+        .data(topTypeDescriptions, d => d);
+
+      barText
+        .enter()
+        .append("text")
+        .classed("barText", true)
+        .attr("text-anchor", "start")
+        .attr("alignment-baseline", "hanging")
+        .attr("transform", (d, i) => `translate(${topReportsXScale(i)}, ${svgHeight - svg3Indent})rotate(-90)`)
+        .attr("fill", "black")
+        .text(d => d)
+        .merge(barText)
+        .transition()
+        .duration(500)
+        .attr("text-anchor", "start")
+        .attr("alignment-baseline", "hanging")
+        .attr("transform", (d, i) => `translate(${topReportsXScale(i)}, ${svgHeight - svg3Indent})rotate(-90)`)
+        .attr("fill", "black")
+        .text(d => d);
+
+      barText
+        .exit()
+        .transition()
+        .duration(250)
+        .style("opacity", 0)
+        .remove();
+
+      bars
+        .exit()
+        .transition()
+        .duration(250)
+        .style("opacity", 0)
+        .remove();
+    }
+  }
+
+  clearBeat() {
+    d3.select(ReactDOM.findDOMNode(this.refs.d3Content3)).html("");
   }
 
   visualizeData(crimeData) {
@@ -440,8 +628,16 @@ class Home extends Component {
     d3.select("#loadingSVG").remove();
     d3.select("#loadingSVG2").remove();
 
+    let dumbThisThing = this;
+
     beats
       .moveToBack()
+      .on("click", function(d, i) {
+        let currentBeat = d3.select(this);
+        let beatID = currentBeat.attr("id");
+
+        dumbThisThing.showBeat(crimeData, beatID);
+      })
       .on("mouseover", function(d, i) {
         let currentBeat = d3.select(this);
         let beatID = currentBeat.attr("id");
@@ -514,10 +710,6 @@ class Home extends Component {
       .duration(500)
       .call(yAxis);
 
-    console.dir(topBeatsYScale);
-    console.dir(yAxis);
-    console.dir(yAxisGroup);
-
     d3.select("#svg2-title")
       .transition()
       .duration(500)
@@ -551,7 +743,7 @@ class Home extends Component {
       .attr("width", topBeatsXScale.bandwidth());
 
     let barText = svg2.selectAll(".barText").data(topBeatsList, d => d);
-    
+
     barText
       .enter()
       .append("text")
@@ -608,6 +800,7 @@ class Home extends Component {
       .duration(500)
       .text("Loading..");
 
+    this.clearBeat();
     this.showYear(parseInt(event.target.value));
   }
 
@@ -664,6 +857,7 @@ class Home extends Component {
         <span className={homeStyles.span1}>
           Click on a beat to see more info about it
         </span>
+        <div className={homeStyles.d3Content3} ref="d3Content3" />
         <div className={homeStyles.d3Content2} ref="d3Content2" />
       </div>
     );
