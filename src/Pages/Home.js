@@ -421,12 +421,12 @@ class Home extends Component {
 
       svg3
         .append("text")
-        .attr("id", "svg2-title")
+        .attr("id", "svg3-title")
         .attr("x", svgWidth / 2)
         .attr("y", svg3Indent / 2)
         .attr("text-anchor", "middle")
         .style("font-weight", "bold")
-        .text(`Top Report Types`);
+        .text(`Top Report Types - ${beat}`);
 
       svg3
         .append("text")
@@ -485,7 +485,12 @@ class Home extends Component {
         .classed("barText", true)
         .attr("text-anchor", "start")
         .attr("alignment-baseline", "hanging")
-        .attr("transform", (d, i) => `translate(${topReportsXScale(i)}, ${svgHeight - svg3Indent})rotate(-90)`)
+        .attr(
+          "transform",
+          (d, i) =>
+            `translate(${topReportsXScale(i)}, ${svgHeight -
+              svg3Indent})rotate(-90)`
+        )
         .attr("fill", "black")
         .text(d => d)
         .merge(barText)
@@ -493,7 +498,12 @@ class Home extends Component {
         .duration(500)
         .attr("text-anchor", "start")
         .attr("alignment-baseline", "hanging")
-        .attr("transform", (d, i) => `translate(${topReportsXScale(i)}, ${svgHeight - svg3Indent})rotate(-90)`)
+        .attr(
+          "transform",
+          (d, i) =>
+            `translate(${topReportsXScale(i)}, ${svgHeight -
+              svg3Indent})rotate(-90)`
+        )
         .attr("fill", "black")
         .text(d => d);
 
@@ -527,10 +537,10 @@ class Home extends Component {
         .duration(500)
         .call(yAxis);
 
-      d3.select("#svg2-title")
+      d3.select("#svg3-title")
         .transition()
         .duration(500)
-        .text(`Top Reported Beats - ${crimeData.year}`);
+        .text(`Top Report Types - ${beat}`);
 
       bars
         .enter()
@@ -563,7 +573,12 @@ class Home extends Component {
         .classed("barText", true)
         .attr("text-anchor", "start")
         .attr("alignment-baseline", "hanging")
-        .attr("transform", (d, i) => `translate(${topReportsXScale(i)}, ${svgHeight - svg3Indent})rotate(-90)`)
+        .attr(
+          "transform",
+          (d, i) =>
+            `translate(${topReportsXScale(i)}, ${svgHeight -
+              svg3Indent})rotate(-90)`
+        )
         .attr("fill", "black")
         .text(d => d)
         .merge(barText)
@@ -571,7 +586,12 @@ class Home extends Component {
         .duration(500)
         .attr("text-anchor", "start")
         .attr("alignment-baseline", "hanging")
-        .attr("transform", (d, i) => `translate(${topReportsXScale(i)}, ${svgHeight - svg3Indent})rotate(-90)`)
+        .attr(
+          "transform",
+          (d, i) =>
+            `translate(${topReportsXScale(i)}, ${svgHeight -
+              svg3Indent})rotate(-90)`
+        )
         .attr("fill", "black")
         .text(d => d);
 
@@ -840,6 +860,22 @@ class Home extends Component {
             here
           </a>
           .
+        </p>
+        <br />
+        <p className={homeStyles.welcomeP}>
+          Looking through this data you may find that 2016 has far fewer total
+          reports than the data for other years. The 2016 reports data provided
+          only includes reports up until August of 2016.
+          <hr />
+          While there aren't exactly groundbreaking discoveries in this data, I
+          did find that year-over-year the number of crime reports per beat has
+          stayed fairly consistent. Each year Oakland has had nearly 200
+          thousand crime reports (excluding 2016). The similarity between years
+          even is a little uncanny.
+          <hr />
+          In addition to the total report counts, it was interesting to see what
+          those crime reports consisted of. For the most part, the report counts
+          consist of reports such as alarm rings, security checks, 911-hang-ups.
         </p>
         <div className={homeStyles.sliderContainer}>
           <input
