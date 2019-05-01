@@ -16,20 +16,38 @@ class Home extends Component {
     super(props);
 
     this.state = {
-      year: 2011
+      year: 2011,
+      svg2YAxis: null,
+      svg2YAxisGroup: null
     };
 
     this.changeYear = this.changeYear.bind(this);
+    this.setupMap = this.setupMap.bind(this);
+    this.visualizeData = this.visualizeData.bind(this);
   }
 
   componentDidMount() {
+    d3.selection.prototype.moveToFront = function() {
+      return this.each(function() {
+        this.parentNode.appendChild(this);
+      });
+    };
+    d3.selection.prototype.moveToBack = function() {
+      return this.each(function() {
+        var firstChild = this.parentNode.firstChild;
+        if (firstChild) {
+          this.parentNode.insertBefore(this, firstChild);
+        }
+      });
+    };
+
     this.setupMap();
     this.showYear(2011);
   }
 
   setupMap() {
-    const svgWidth = 500;
-    const svgHeight = 500;
+    const svgWidth = 400;
+    const svgHeight = 400;
 
     let svg = d3
       .select(ReactDOM.findDOMNode(this.refs.d3Content))
@@ -38,14 +56,70 @@ class Home extends Component {
       .attr("height", `${svgHeight}px`)
       .attr("id", "svg")
       .style("margin", "10px auto");
-    // .style("background-color", "lightgray");
+
+    let svg2 = d3
+      .select(ReactDOM.findDOMNode(this.refs.d3Content2))
+      .append("svg")
+      .attr("width", `${svgWidth}px`)
+      .attr("height", `${svgHeight}px`)
+      .attr("id", "svg2")
+      .style("margin", "10px auto");
+
+    let svg2Indent = 55;
+
+    svg2
+      .append("text")
+      .attr("id", "svg2-title")
+      .attr("x", svgWidth / 2)
+      .attr("y", svg2Indent / 2)
+      .attr("text-anchor", "middle")
+      .style("font-weight", "bold")
+      .text(`Top Reported Beats`);
+
+    svg2
+      .append("text")
+      .attr("id", "svg2-y-axis-label")
+      .attr("transform", "rotate(-90)")
+      .attr("text-anchor", "middle")
+      .attr("x", -svgHeight / 2)
+      .attr("y", svg2Indent / 2)
+      .text("Beat Report Counts");
+
+    let topBeatsYScale = d3
+      .scaleLinear()
+      .domain([0, 1])
+      .range([svgHeight - svg2Indent, svg2Indent]);
+
+    let yAxis = d3.axisLeft(topBeatsYScale).tickFormat(d => `${d / 1000}k`);
+
+    let yAxisGroup = svg2
+      .append("g")
+      .classed("svg2Y axis", true)
+      .attr("transform", `translate(${svg2Indent}, 0)`)
+      .call(yAxis);
+
+    this.setState({
+      svg2YAxis: yAxis,
+      svg2YAxisGroup: yAxisGroup
+    });
+
+    svg2
+      .selectAll("rect")
+      .data([], d => d)
+      .enter()
+      .append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", 0)
+      .attr("height", 0)
+      .classed("bar", true);
 
     d3.json("oaklandBeats.json").then(data => {
       let centroid = d3.geoCentroid(data);
 
       let projection = d3
         .geoMercator()
-        .scale([110000])
+        .scale([87000])
         .translate([svgWidth / 2, svgHeight / 2])
         .center(centroid);
 
@@ -111,7 +185,7 @@ class Home extends Component {
       .attr("stop-color", "#54278f")
       .attr("stop-opacity", 1);
 
-    const lWidth = 200;
+    const lWidth = 150;
     const lHeight = 20;
     // Legend Rect
     svg
@@ -125,7 +199,7 @@ class Home extends Component {
     // Legend title
     svg
       .append("text")
-      .attr("x", 25)
+      .attr("x", 20)
       .attr("y", 37.5)
       .attr("dominant-baseline", "middle")
       .attr("fill", "black")
@@ -174,7 +248,7 @@ class Home extends Component {
     // Beat text
     svg
       .append("text")
-      .attr("x", svgWidth - 155)
+      .attr("x", svgWidth - 145)
       .attr("y", 105)
       .attr("dominant-baseline", "middle")
       .attr("fill", "black")
@@ -186,7 +260,7 @@ class Home extends Component {
     // Beat Reports text
     svg
       .append("text")
-      .attr("x", svgWidth - 155)
+      .attr("x", svgWidth - 145)
       .attr("y", 125)
       .attr("dominant-baseline", "middle")
       .attr("fill", "black")
@@ -199,12 +273,21 @@ class Home extends Component {
   showYear(year) {
     // Remove existing spinners
     d3.select("#loadingSVG").remove();
+    d3.select("#loadingSVG2").remove();
 
     let svg = d3.select("#svg");
+    let svg2 = d3.select("#svg2");
+
     // Add loading spinner
     svg
       .append("rect")
       .attr("id", "loadingSVG")
+      .attr("fill", "gray")
+      .classed(homeStyles.loadingSVG, true);
+
+    svg2
+      .append("rect")
+      .attr("id", "loadingSVG2")
       .attr("fill", "gray")
       .classed(homeStyles.loadingSVG, true);
 
@@ -250,31 +333,35 @@ class Home extends Component {
         //Check for max beat reports
         if (crimeData.beatReportCount[d.Beat].total > crimeData.maxBeatReports)
           crimeData.maxBeatReports = crimeData.beatReportCount[d.Beat].total;
-        // Increment count of incident types for the beat
+        // Increment count of incident type descriptions for the beat
         let beatData = crimeData.beatReportCount[d.Beat];
-        let incidentTypeId = d["Incident Type Id"];
+        let incidentTypeDescription = d["Incident Type Description"];
 
-        // Check if types object is defined
-        if (beatData.types !== undefined) {
-          // Check if incident type id key has been set
-          if (beatData.types[incidentTypeId] !== undefined)
-            beatData.types[incidentTypeId]++;
+        // Check if typeDescriptions object is defined
+        if (beatData.typeDescriptions !== undefined) {
+          // Check if Incident Type Description key has been set
+          if (beatData.typeDescriptions[incidentTypeDescription] !== undefined)
+            beatData.typeDescriptions[incidentTypeDescription]++;
           else {
-            beatData.types[incidentTypeId] = 1;
+            beatData.typeDescriptions[incidentTypeDescription] = 1;
           }
         } else {
-          beatData.types = {};
-          beatData.types[incidentTypeId] = 1;
+          beatData.typeDescriptions = {};
+          beatData.typeDescriptions[incidentTypeDescription] = 1;
         }
       } else {
         crimeData.beatReportCount[d.Beat] = {};
-        crimeData.beatReportCount[d.Beat].types = {};
-        crimeData.beatReportCount[d.Beat].types[d["Incident Type Id"]] = 1;
+        crimeData.beatReportCount[d.Beat].typeDescriptions = {};
+        crimeData.beatReportCount[d.Beat].typeDescriptions[
+          d["Incident Type Description"]
+        ] = 1;
         crimeData.beatReportCount[d.Beat].total = 1;
       }
 
       crimeData.totalReports++;
 
+      return;
+      /*
       return {
         agency: d.Agency,
         createdTime: new Date(d["Create Time"]),
@@ -286,13 +373,14 @@ class Home extends Component {
         incidentTypeDescription: d["Incident Type Description"],
         eventNumber: d["Event Number"]
       };
+      */
     })
       .then(data => {
         // Add list of beats with most crime
         let beatReportCount = crimeData.beatReportCount;
-        let topReportedBeats = Object.keys(beatReportCount).sort(
-          (a, b) => beatReportCount[b].total - beatReportCount[a].total
-        ).slice(0, 10);
+        let topReportedBeats = Object.keys(beatReportCount)
+          .sort((a, b) => beatReportCount[b].total - beatReportCount[a].total)
+          .slice(0, 10);
         let beatsWithCounts = {};
         beatsWithCounts.list = topReportedBeats;
         for (let i = 0; i < topReportedBeats.length; i++) {
@@ -301,7 +389,16 @@ class Home extends Component {
         }
         crimeData.topReportedBeats = beatsWithCounts;
 
-        // 
+        // Add list of most common report descriptions for each beat
+        //  Iterate through each beat
+        for (let beatKey in beatReportCount) {
+          let beat = beatReportCount[beatKey];
+          let descriptions = beat.typeDescriptions;
+          let topDescriptions = Object.keys(descriptions)
+            .sort((a, b) => descriptions[b] - descriptions[a])
+            .slice(0, 10);
+          beat.topTypeDescriptions = topDescriptions;
+        }
 
         this.visualizeData(crimeData);
       })
@@ -317,6 +414,7 @@ class Home extends Component {
     let maxCrimes = (Math.floor(crimeData.maxBeatReports / 200) + 1) * 200;
 
     let svg = d3.select("#svg");
+    let svg2 = d3.select("#svg2");
     let beats = svg.selectAll("path");
 
     let colorScale = d3
@@ -340,8 +438,10 @@ class Home extends Component {
 
     // Remove existing spinners
     d3.select("#loadingSVG").remove();
+    d3.select("#loadingSVG2").remove();
 
     beats
+      .moveToBack()
       .on("mouseover", function(d, i) {
         let currentBeat = d3.select(this);
         let beatID = currentBeat.attr("id");
@@ -385,6 +485,102 @@ class Home extends Component {
       .transition()
       .duration(500)
       .text(maxCrimes);
+
+    let topBeatsList = crimeData.topReportedBeats.list;
+    let svg2Width = svg2.node().width.baseVal.value;
+    let svg2Height = svg2.node().height.baseVal.value;
+
+    let svg2Indent = 55;
+
+    let topBeatsXScale = d3
+      .scaleBand()
+      .domain(d3.range(topBeatsList.length))
+      .range([svg2Indent, svg2Width - svg2Indent])
+      .paddingInner(0.1);
+
+    let topBeatsYScale = d3
+      .scaleLinear()
+      .domain([0, crimeData.topReportedBeats[topBeatsList[0]].total])
+      .range([svg2Height - svg2Indent, svg2Indent]);
+
+    // Update bars and axes for svg2
+    let bars = svg2.selectAll("rect").data(topBeatsList, d => d);
+    let yAxis = this.state.svg2YAxis;
+    let yAxisGroup = this.state.svg2YAxisGroup;
+
+    yAxis.scale(topBeatsYScale);
+    yAxisGroup
+      .transition()
+      .duration(500)
+      .call(yAxis);
+
+    console.dir(topBeatsYScale);
+    console.dir(yAxis);
+    console.dir(yAxisGroup);
+
+    d3.select("#svg2-title")
+      .transition()
+      .duration(500)
+      .text(`Top Reported Beats - ${crimeData.year}`);
+
+    bars
+      .enter()
+      .append("rect")
+      .classed("bar", true)
+      .attr("x", svg2Width)
+      .attr("y", d => topBeatsYScale(crimeData.topReportedBeats[d].total))
+      .attr(
+        "height",
+        d =>
+          svg2Height -
+          svg2Indent -
+          topBeatsYScale(crimeData.topReportedBeats[d].total)
+      )
+      .merge(bars)
+      .transition()
+      .duration(500)
+      .attr("x", (d, i) => topBeatsXScale(i))
+      .attr("y", d => topBeatsYScale(crimeData.topReportedBeats[d].total))
+      .attr(
+        "height",
+        d =>
+          svg2Height -
+          svg2Indent -
+          topBeatsYScale(crimeData.topReportedBeats[d].total)
+      )
+      .attr("width", topBeatsXScale.bandwidth());
+
+    let barText = svg2.selectAll(".barText").data(topBeatsList, d => d);
+    
+    barText
+      .enter()
+      .append("text")
+      .classed("barText", true)
+      .attr("x", (d, i) => topBeatsXScale(i))
+      .attr("y", d => topBeatsYScale(crimeData.topReportedBeats[d].total) + 15)
+      .attr("fill", "white")
+      .text(d => d)
+      .merge(barText)
+      .transition()
+      .duration(500)
+      .attr("x", (d, i) => topBeatsXScale(i))
+      .attr("y", d => topBeatsYScale(crimeData.topReportedBeats[d].total) + 15)
+      .attr("fill", "white")
+      .text(d => d);
+
+    barText
+      .exit()
+      .transition()
+      .duration(250)
+      .style("opacity", 0)
+      .remove();
+
+    bars
+      .exit()
+      .transition()
+      .duration(250)
+      .style("opacity", 0)
+      .remove();
   }
 
   changeYear(event) {
@@ -420,12 +616,37 @@ class Home extends Component {
 
     return (
       <div className={homeStyles.container}>
-        <div className={homeStyles.header} />
         <h1 className={homeStyles.h1}>Visualizing Crime in Oakland CA</h1>
         <p className={homeStyles.welcomeP}>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi
-          bibendum, arcu eu finibus rutrum, massa mi tristique orci, a tempus
-          turpis nibh tincidunt eros. Sed lacinia tempus dignissim.
+          These charts visualize{" "}
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://www.kaggle.com/cityofoakland/oakland-crime-statistics-2011-to-2016"
+          >
+            crime report data
+          </a>{" "}
+          in Oakland, CA from 2011 to 2016 using{" "}
+          <a target="_blank" rel="noopener noreferrer" href="https://d3js.org/">
+            D3.js
+          </a>
+          . Made by{" "}
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://github.com/JimDaGuy"
+          >
+            James DiGrazia
+          </a>
+          . Github repository available{" "}
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://github.com/JimDaGuy/460-Project3"
+          >
+            here
+          </a>
+          .
         </p>
         <div className={homeStyles.sliderContainer}>
           <input
@@ -440,6 +661,10 @@ class Home extends Component {
           <div className={homeStyles.sliderValue}>{year}</div>
         </div>
         <div className={homeStyles.d3Content} ref="d3Content" />
+        <span className={homeStyles.span1}>
+          Click on a beat to see more info about it
+        </span>
+        <div className={homeStyles.d3Content2} ref="d3Content2" />
       </div>
     );
   }
